@@ -32,11 +32,12 @@ export default class Renderer {
 
   /**
    * Dessine l'ensemble des éléments de jeu.
+   * @param {GameState} state - L'état actuel du jeu.
    * @param {ItemManager} itemManager - Gestionnaire d'objets.
    * @param {Serpent[]} serpents - Liste des serpents actifs.
    * @param {number} timestamp - Temps actuel (pour les animations).
    */
-  render(itemManager, serpents, timestamp = Date.now()) {
+  render(state, itemManager, serpents, timestamp = Date.now()) {
     this.clear();
 
     // 1. Rendu des items et particules

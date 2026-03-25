@@ -50,6 +50,7 @@ engine.ui.showMenu({
   btnText: "Démarrer l'Aventure",
   showInput: false,
   isGameOver: false,
+  showDebug: true,
 });
 
 // Synchronisation visuelle du bouton Debug

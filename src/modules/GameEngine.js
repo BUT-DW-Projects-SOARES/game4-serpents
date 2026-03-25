@@ -239,6 +239,7 @@ export default class GameEngine {
       showScore: true,
       score: this.state.score,
       btnText: "Réessayer",
+      showDebug: true,
     });
   }
 
@@ -268,8 +269,42 @@ export default class GameEngine {
     // 3. Items & Difficulté
     this._processGameplaySystems(timestamp);
 
-    // 4. Nettoyage
+    // 4. Console Debugging (Throttled)
+    if (GAME_CONFIG.DEBUG_MODE && timestamp % 2000 < this.state.moveInterval) {
+      this._logDebugInfo();
+    }
+
+    // 5. Nettoyage
     this.serpents = this.serpents.filter((s) => !s.dead || s === this.joueur);
+  }
+
+  /**
+   * Loggue les détails techniques de la session dans la console.
+   * @private
+   */
+  _logDebugInfo() {
+    console.group(
+      `%c[DEBUG] Game State @ ${new Date().toLocaleTimeString()}`,
+      "color: #3b82f6; font-weight: bold;",
+    );
+    console.log(
+      `Score: ${this.state.score} | FPS: ${this.state.fps.toFixed(1)}`,
+    );
+    console.log(
+      `Entities: ${this.serpents.length} serpents | ${this.itemManager.items.length} items`,
+    );
+
+    const aiStates = this.serpents.slice(1).map((s) => {
+      let behavior = "Wander";
+      if (s.isHunting) behavior = "HUNT";
+      else if (s.isRushing) behavior = "RUSH";
+      return { pos: `[${s.anneaux[0].i},${s.anneaux[0].j}]`, behavior };
+    });
+
+    if (aiStates.length > 0) {
+      console.table(aiStates);
+    }
+    console.groupEnd();
   }
 
   /**
@@ -320,7 +355,12 @@ export default class GameEngine {
       }
     }
 
-    this.renderer.render(this.itemManager, this.serpents, timestamp);
+    this.renderer.render(
+      this.state,
+      this.itemManager,
+      this.serpents,
+      timestamp,
+    );
     this.animationFrameId = requestAnimationFrame((t) => this.gameLoop(t));
   }
 }
