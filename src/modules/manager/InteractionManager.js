@@ -12,11 +12,11 @@ export default class InteractionManager {
     this.state = systems.state;
     this.input = systems.input;
     this.score = systems.score;
-    
+
     this.onStart = callbacks.onStart;
     this.onTogglePause = callbacks.onTogglePause;
     this.onRestartRequest = callbacks.onRestartRequest;
-    
+
     this._initUI();
     this._initKeyboard();
     this._initMobile();
@@ -26,9 +26,17 @@ export default class InteractionManager {
    * Liaison des boutons de l'interface graphique.
    * @private
    */
+
+  /**
+   * Liaison des boutons de l'interface graphique.
+   * @private
+   */
   _initUI() {
-    // Bouton d'action principal (Menu Accueil / Pause)
-    this.ui.menuActionBtn.addEventListener("click", () => {
+    const bind = (id, fn) =>
+      document.getElementById(id)?.addEventListener("click", fn);
+
+    // Menu Principal et Actions de base
+    bind("menu-action-btn", () => {
       if (this.state.isPaused) this.onTogglePause();
       else {
         this.ui.hideMenu();
@@ -36,66 +44,57 @@ export default class InteractionManager {
       }
     });
 
-    // Bouton de redémarrage (Game Over / Pause)
-    this.ui.menuRestartBtn.addEventListener("click", () => {
+    bind("menu-restart-btn", () => {
       this.ui.hideMenu();
       this.onStart();
     });
 
-    // Menus d'information et statistiques
-    document.getElementById("info-btn")?.addEventListener("click", () => this.ui.showInfo());
-    document.getElementById("leaderboard-btn")?.addEventListener("click", () => this.score.show());
+    // Modales et Overlays
+    bind("info-btn", () => this.ui.showInfo());
+    bind("info-close", () => this.ui.hideInfo());
+    bind("leaderboard-btn", () => this.score.show());
+    bind("scoreboard-close", () => this.score.hide());
+    bind("scoreboard-clear", () => this.score.clearScores());
 
-    // Contrôles du tableau des scores
-    document.getElementById("scoreboard-close")?.addEventListener("click", () => this.score.hide());
-    document.getElementById("scoreboard-clear")?.addEventListener("click", () => this.score.clearScores());
-    document.getElementById("scoreboard-overlay")?.addEventListener("click", (e) => {
-        if (e.target.id === "scoreboard-overlay") this.score.hide();
-    });
-
-    // Modales de confirmation et information
-    this.ui.confirmYesBtn.addEventListener("click", () => {
+    bind("confirm-yes-btn", () => {
       this.ui.hideConfirm();
       this.onStart();
     });
-    this.ui.confirmNoBtn.addEventListener("click", () => this.ui.hideConfirm());
-    this.ui.infoCloseBtn.addEventListener("click", () => this.ui.hideInfo());
-    
-    // Fermeture par clic sur overlay
-    this.ui.confirmOverlay.addEventListener("click", (e) => {
-        if (e.target.id === "confirm-modal") this.ui.hideConfirm();
-    });
-    this.ui.infoOverlay.addEventListener("click", (e) => {
-        if (e.target.id === "info-modal") this.ui.hideInfo();
+    bind("confirm-no-btn", () => this.ui.hideConfirm());
+
+    // Fermeture par clic sur l'overlay (Pattern récurrent)
+    [
+      this.ui.confirmOverlay,
+      this.ui.infoOverlay,
+      document.getElementById("scoreboard-overlay"),
+    ].forEach((ov) => {
+      ov?.addEventListener("click", (e) => {
+        if (e.target === ov)
+          ov === this.ui.confirmOverlay
+            ? this.ui.hideConfirm()
+            : ov === this.ui.infoOverlay
+              ? this.ui.hideInfo()
+              : this.score.hide();
+      });
     });
   }
 
   /**
-   * Raccourcis clavier globaux.
+   * Centralisation des raccourcis clavier via InputManager.
    * @private
    */
   _initKeyboard() {
-    window.addEventListener("keydown", (e) => {
-      const key = e.key.toLowerCase();
-      
-      // Pause (P)
-      if (key === "p" && this.state.gameRunning) {
-          this.onTogglePause();
-      }
-      
-      // Information (I)
-      if (key === "i") {
-          this.ui.showInfo();
-      }
-      
-      // Recommencer (R)
-      if (key === "r") {
-        if (this.state.gameRunning && !this.state.isPaused) {
-            this.onRestartRequest();
-        } else if (this.ui.isMenuVisible() || !this.state.gameRunning) {
-            this.ui.hideMenu();
-            this.onStart();
-        }
+    this.input.registerAction(
+      "p",
+      () => this.state.gameRunning && this.onTogglePause(),
+    );
+    this.input.registerAction("i", () => this.ui.showInfo());
+    this.input.registerAction("r", () => {
+      if (this.state.gameRunning && !this.state.isPaused) {
+        this.onRestartRequest();
+      } else if (this.ui.isMenuVisible() || !this.state.gameRunning) {
+        this.ui.hideMenu();
+        this.onStart();
       }
     });
   }
@@ -105,36 +104,32 @@ export default class InteractionManager {
    * @private
    */
   _initMobile() {
-    const setupBtn = (id, dir) => {
-      const btn = document.getElementById(id);
+    ["up", "right", "down", "left"].forEach((id, dir) => {
+      const btn = document.getElementById(`btn-${id}`);
       if (!btn) return;
 
-      const setClass = (add) => btn.classList[add ? "add" : "remove"]("is-active");
+      const setAct = (active) =>
+        btn.classList[active ? "add" : "remove"]("is-active");
 
-      // Touch
-      btn.addEventListener("touchstart", (e) => {
-        e.preventDefault();
-        setClass(true);
-        this.input.addDirection(dir);
-      }, { passive: false });
-      
-      btn.addEventListener("touchend", (e) => {
-          e.preventDefault();
-          setClass(false);
-      }, { passive: false });
+      // Evenements tactiles et souris
+      ["touchstart", "mousedown"].forEach((evt) =>
+        btn.addEventListener(
+          evt,
+          (e) => {
+            if (evt === "touchstart") e.preventDefault();
+            setAct(true);
+            this.input.addDirection(dir);
+          },
+          { passive: evt !== "touchstart" },
+        ),
+      );
 
-      // Mouse fallback (Desktop Dev Tools)
-      btn.addEventListener("mousedown", () => setClass(true));
-      btn.addEventListener("mouseup", () => setClass(false));
-      btn.addEventListener("mouseleave", () => setClass(false));
-      
-      // Click simple
+      ["touchend", "mouseup", "mouseleave"].forEach((evt) =>
+        btn.addEventListener(evt, () => setAct(false)),
+      );
+
+      // Click simple comme fallback
       btn.addEventListener("click", () => this.input.addDirection(dir));
-    };
-
-    setupBtn("btn-up", 0);
-    setupBtn("btn-right", 1);
-    setupBtn("btn-down", 2);
-    setupBtn("btn-left", 3);
+    });
   }
 }

@@ -126,7 +126,7 @@ export default class GameEngine {
 
     // 1. Mise à jour de la direction
     const nextDir = this.input.getNextDirection(this.entities.joueur.direction);
-    if (nextDir !== null) this.entities.joueur.direction = nextDir;
+    if (nextDir !== null) this.entities.joueur.changeDir(nextDir);
 
     // 2. Mouvement et Collisions Fatales
     for (const s of this.entities.serpents) {

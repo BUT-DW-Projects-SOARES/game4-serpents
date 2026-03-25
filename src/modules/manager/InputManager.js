@@ -13,7 +13,33 @@ export default class InputManager {
      */
     this.directionQueue = [];
 
+    /** @type {Map<string, Function>} Actions personnalisées (ex: Pause) */
+    this.actions = new Map();
+
+    /** @type {Object.<string, number>} Mapping des touches vers les directions */
+    this.keyMap = {
+      z: 0,
+      w: 0,
+      arrowup: 0,
+      d: 1,
+      arrowright: 1,
+      s: 2,
+      arrowdown: 2,
+      q: 3,
+      a: 3,
+      arrowleft: 3,
+    };
+
     this._setupListeners();
+  }
+
+  /**
+   * Enregistre une callback pour une touche spécifique.
+   * @param {string} key - La touche (ex: 'p', 'r').
+   * @param {Function} callback - La fonction à exécuter.
+   */
+  registerAction(key, callback) {
+    this.actions.set(key.toLowerCase(), callback);
   }
 
   /**
@@ -27,38 +53,22 @@ export default class InputManager {
   }
 
   /**
-   * Initialise les écouteurs d'événements clavier globaux.
-   * Supporte les flèches directionnelles et les touches ZQSD / WASD.
+   * Initialise l'écouteur d'événements clavier global.
    * @private
    */
   _setupListeners() {
     window.addEventListener("keydown", (event) => {
-      let nouvelleDirection = -1;
+      const key = event.key.toLowerCase();
 
-      switch (event.key.toLowerCase()) {
-        case "z":
-        case "w": // Support WASD/ZQSD
-        case "arrowup":
-          nouvelleDirection = 0; // Haut
-          break;
-        case "d":
-        case "arrowright":
-          nouvelleDirection = 1; // Droite
-          break;
-        case "s":
-        case "arrowdown":
-          nouvelleDirection = 2; // Bas
-          break;
-        case "q":
-        case "a": // Support WASD/ZQSD
-        case "arrowleft":
-          nouvelleDirection = 3; // Gauche
-          break;
+      // 1. Gestion des directions
+      if (this.keyMap[key] !== undefined) {
+        this.addDirection(this.keyMap[key]);
+        return;
       }
 
-      if (nouvelleDirection !== -1) {
-        this.addDirection(nouvelleDirection);
-      }
+      // 2. Gestion des actions système (Pause, etc)
+      const action = this.actions.get(key);
+      if (action) action();
     });
   }
 

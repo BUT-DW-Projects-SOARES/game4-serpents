@@ -264,4 +264,12 @@ export default class Serpent {
     const tete = this.anneaux[0];
     return autre.anneaux.some((a) => a.i === tete.i && a.j === tete.j);
   }
+
+  /**
+   * Change la direction du serpent.
+   * @param {number} d - Nouvelle direction (0:Haut, 1:Droite, 2:Bas, 3:Gauche).
+   */
+  changeDir(d) {
+    this.direction = d;
+  }
 }
