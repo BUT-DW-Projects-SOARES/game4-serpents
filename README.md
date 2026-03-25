@@ -1,50 +1,51 @@
-# 🐍 Serpent Game - TP n°2
+# 🐍 Slither Arena — TP n°2 (GAME4)
 
-Ce projet est une implémentation simplifiée du jeu du serpent (Snake) réalisée dans le cadre du cours **GAME4 - Programmation Orientée Objet** (BUT MMI n-2). 
+Slither Arena est un jeu web de type Snake développé en **JavaScript ES6+** avec l'API **HTML5 Canvas** et **Vite**. Le projet met en œuvre une architecture modulaire orientée objet avec système d'IA, gestion de collisions avancée, et une interface responsive compatible mobile.
 
-L'objectif principal est de manipuler les concepts de classes et d'objets en JavaScript pour gérer les segments du serpent et son mouvement sur un canvas.
+## 🎮 Fonctionnalités
 
-## 🚀 Fonctionnalités
+- **Architecture Modulaire** : Moteur (`GameEngine`) orchestrant des systèmes spécialisés indépendants.
+- **Intelligence Artificielle** : Serpents IA avec comportements multiples (Wander, Rush, Hunt) et esquive prédictive.
+- **Système de Collisions** : Détection murs, auto-morsure, inter-serpents, et collecte d'items.
+- **PowerUps** : Bonus d'invincibilité permettant de traverser les murs et détruire les IA.
+- **Effets Visuels** : Particules d'explosion, pulsations de croissance, yeux directionnels.
+- **Responsive & Tactile** : D-Pad optimisé pour mobile (iPhone SE inclus).
+- **Persistance** : Tableau des 10 meilleurs scores via `localStorage`.
+- **HiDPI** : Rendu net sur écrans Retina grâce au `devicePixelRatio`.
+- **Plein Écran** : Support via touche `F11`.
 
-- **Modèle Orienté Objet** : Utilisation de classes (`Anneau` et `Serpent`) pour structurer le code.
-- **Animation Fluide** : Le serpent se déplace de manière séquentielle, chaque anneau suivant celui qui le précède.
-- **Sortie du Terrier** : Initialement empilés, les anneaux se déploient au premier mouvement.
-- **Intelligence Artificielle de base** : Les serpents changent de direction aléatoirement (probabilité 2/10) tout en évitant les demi-tours immédiats.
-- **Gestion des Bords** : Système de "wrap-around" (rebond) permettant de traverser les bords du terrain pour réapparaître du côté opposé.
-- **Interface Premium** : Design sombre (Dark Mode), titre centré, icône émoji 🐍 et support du plein écran.
+## 🏛️ Architecture
 
-## 🛠️ Structure Technique
+```
+src/
+├── main.js              # Bootstrap et configuration HiDPI
+├── style.css            # Design premium (Dark Mode, Glassmorphism)
+├── constants.js         # Configuration globale (FPS, couleurs, équilibrage)
+├── utils.js             # Helpers mathématiques
+└── modules/
+    ├── GameEngine.js    # Orchestrateur central
+    ├── logic/
+    │   ├── Ticker.js         # Boucle temporelle (requestAnimationFrame)
+    │   ├── GameState.js      # État de session (score, difficulté)
+    │   ├── EntityManager.js  # Registre des entités vivantes
+    │   ├── SpawnSystem.js    # Génération IA et bonus
+    │   ├── CollisionSystem.js# Résolution des impacts
+    │   └── Renderer.js       # Pipeline de rendu Canvas
+    ├── manager/
+    │   ├── InputManager.js      # Centralisation clavier (Action Mapping)
+    │   ├── InteractionManager.js# Pont DOM/Tactile/Moteur
+    │   ├── UIManager.js         # HUD et overlays
+    │   ├── ScoreManager.js      # Persistance localStorage
+    │   └── ItemManager.js       # Pommes, PowerUps, particules
+    └── serpent/
+        ├── Serpent.js        # Entité joueur
+        ├── Serpent_ai.js     # Entité IA (héritage)
+        └── Anneau.js         # Segment unitaire
+```
 
-### Les Classes
+## 🛠️ Installation
 
-- **Classe `Anneau`** :
-  - Gère sa position (`i`, `j`) et sa `couleur`.
-  - Méthode `draw()` pour s'afficher.
-  - Méthode `move(d)` avec gestion automatique des bords (grille 20x20).
-  - Méthode `copy(a)` pour copier la position d'un autre anneau.
-
-- **Classe `Serpent`** :
-  - Gère un tableau d'objets `Anneau`.
-  - Distingue visuellement la tête, le corps et la queue via des variables de couleur (`darkgreen`, `green`).
-  - Méthode `move()` : orchestre le suivi des anneaux (le $n$-ième récupère la position du $n-1$).
-  - Méthode `extend()` : permet d'allonger le serpent par la queue.
-
-### Environnement
-
-- **Vite** : Utilisé comme serveur de développement et outil de build.
-- **Canvas 2D** : Utilisé pour le rendu graphique (grille de 400x400 pixels découpée en cellules de 20x20).
-
-## 👩‍💻 Installation
-
-1. Installez les dépendances :
-   ```bash
-   pnpm install
-   ```
-2. Lancez le serveur de développement :
-   ```bash
-   pnpm run dev
-   ```
-
-## 📝 Auteur
-
-Projet réalisé dans le cadre du TP de MMI 2 - Université de Strasbourg.
+```bash
+pnpm install
+pnpm run dev
+```
