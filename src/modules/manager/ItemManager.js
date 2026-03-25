@@ -29,52 +29,66 @@ export class Item {
     const cy = this.j * TAILLE_CELLULE + TAILLE_CELLULE / 2;
 
     if (this.type === "apple") {
-      // Effet de palpitation
-      const scale = 1 + Math.sin(timeNow / 150) * 0.15;
-      const r = (TAILLE_CELLULE / 2 - 2) * scale;
-
-      ctx.fillStyle = COLORS.apple;
-      ctx.shadowColor = COLORS.apple;
-      ctx.shadowBlur = 15;
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
+      this._drawApple(ctx, cx, cy, timeNow);
     } else if (this.type === "powerup") {
-      // Diamant pulsé électriquement
-      const scale = 1 + Math.sin(timeNow / 80) * 0.2;
-      const r = (TAILLE_CELLULE / 2 - 1) * scale;
-
-      ctx.fillStyle = COLORS.powerup;
-      ctx.shadowColor = COLORS.powerup;
-      ctx.shadowBlur = 20;
-
-      // Dessin d'un losange
-      ctx.beginPath();
-      ctx.moveTo(cx, cy - r);
-      ctx.lineTo(cx + r, cy);
-      ctx.lineTo(cx, cy + r);
-      ctx.lineTo(cx - r, cy);
-      ctx.closePath();
-      ctx.fill();
-      ctx.shadowBlur = 0;
+      this._drawPowerUp(ctx, cx, cy, timeNow);
     }
+  }
+
+  /**
+   * Dessine une pomme avec un effet de pulsation.
+   * @private
+   */
+  _drawApple(ctx, cx, cy, timeNow) {
+    const scale = 1 + Math.sin(timeNow / 150) * 0.15;
+    const r = (TAILLE_CELLULE / 2 - 2) * scale;
+
+    ctx.fillStyle = COLORS.apple;
+    ctx.shadowColor = COLORS.apple;
+    ctx.shadowBlur = 15;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+
+  /**
+   * Dessine un diamant pulsé électriquement (PowerUp).
+   * @private
+   */
+  _drawPowerUp(ctx, cx, cy, timeNow) {
+    const scale = 1 + Math.sin(timeNow / 80) * 0.2;
+    const r = (TAILLE_CELLULE / 2 - 1) * scale;
+
+    ctx.fillStyle = COLORS.powerup;
+    ctx.shadowColor = COLORS.powerup;
+    ctx.shadowBlur = 20;
+
+    // Dessin d'un losange
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - r);
+    ctx.lineTo(cx + r, cy);
+    ctx.lineTo(cx, cy + r);
+    ctx.lineTo(cx - r, cy);
+    ctx.closePath();
+    ctx.fill();
+    ctx.shadowBlur = 0;
   }
 }
 
 /**
- * Manager centralisant la gestion des objets (spawn, rendu) et des particules.
+ * Manager centralisant la gestion des objets (spawn, rendu) et des effets visuels (particules).
  */
 export default class ItemManager {
   /**
-   * @param {number} nbCells - Le nombre de cellules sur la grille.
+   * @param {number} NB_CELLS - Le nombre de cellules sur la grille.
    */
-  constructor(nbCells) {
+  constructor(NB_CELLS) {
     /**
      * Dimension de la grille (côté).
      * @type {number}
      */
-    this.nbCells = nbCells;
+    this.NB_CELLS = NB_CELLS;
 
     /**
      * Collection des objets actifs sur le terrain.
@@ -92,25 +106,30 @@ export default class ItemManager {
   /**
    * Instancie aléatoirement un nouvel objet sur la grille en évitant les collisions.
    * @param {string} type - Le type de l'objet (ex: "apple", "powerup").
-   * @param {Array} serpents - Liste des serpents pour éviter de spawner sur eux.
+   * @param {Serpent[]} serpents - Liste des serpents pour éviter de spawner sur eux.
    */
   spawnItem(type, serpents) {
     let x, y;
     let collision;
     let attempts = 0;
+
     do {
       collision = false;
-      x = getRandomInt(this.nbCells);
-      y = getRandomInt(this.nbCells);
+      x = getRandomInt(this.NB_CELLS);
+      y = getRandomInt(this.NB_CELLS);
 
+      // Vérifier les collisions avec les serpents
       serpents.forEach((s) => {
         s.anneaux.forEach((a) => {
           if (a.i === x && a.j === y) collision = true;
         });
       });
+
+      // Vérifier les collisions avec les items existants
       this.items.forEach((item) => {
         if (item.i === x && item.j === y) collision = true;
       });
+
       attempts++;
       if (attempts > 500) break;
     } while (collision);
@@ -121,7 +140,7 @@ export default class ItemManager {
   }
 
   /**
-   * Instancie une grappe de particules visuelles.
+   * Instancie une grappe de particules visuelles pour un effet "pop".
    * @param {number} x - Position X sur la grille.
    * @param {number} y - Position Y sur la grille.
    * @param {string} color - Couleur des particules.
@@ -141,39 +160,47 @@ export default class ItemManager {
   }
 
   /**
-   * Met à jour et dessine tous les items et particules.
-   * @param {CanvasRenderingContext2D} ctx - Le contexte 2D.
+   * Met à jour et dessine tous les items et les effets de particules.
+   * @param {CanvasRenderingContext2D} ctx - Le contexte 2D du canvas.
    * @param {number} timeNow - Timestamp actuel.
    */
   updateAndDraw(ctx, timeNow) {
     // Dessin des items
-    this.items.forEach((item) => {
-      item.draw(ctx, timeNow);
-    });
+    this.items.forEach((item) => item.draw(ctx, timeNow));
 
     // Mise à jour et dessin des particules
     for (let i = this.particles.length - 1; i >= 0; i--) {
-      let p = this.particles[i];
-      p.x += p.vx;
-      p.y += p.vy;
-      p.life -= p.decay;
-
-      if (p.life <= 0) {
-        this.particles.splice(i, 1);
-        continue;
-      }
-
-      ctx.globalAlpha = p.life;
-      ctx.fillStyle = p.color;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.life * 4, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = 1.0;
+      this._updateAndDrawParticle(ctx, i);
     }
   }
 
   /**
-   * Réinitialise les collections.
+   * Met à jour et dessine une particule individuelle.
+   * @param {CanvasRenderingContext2D} ctx - Le contexte 2D.
+   * @param {number} index - Index de la particule dans la collection.
+   * @private
+   */
+  _updateAndDrawParticle(ctx, index) {
+    const p = this.particles[index];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life -= p.decay;
+
+    if (p.life <= 0) {
+      this.particles.splice(index, 1);
+      return;
+    }
+
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.life * 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1.0;
+  }
+
+  /**
+   * Réinitialise les collections d'items et de particules.
    */
   reset() {
     this.items = [];

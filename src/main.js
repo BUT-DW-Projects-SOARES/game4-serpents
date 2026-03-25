@@ -7,32 +7,32 @@ import { CSS_SIZE, GAME_CONFIG } from "./constants.js";
  * Initialise le canvas, configure la mise à l'échelle HiDPI et lance le moteur de jeu.
  */
 
-// --- Initialisation du Canvas ---
+// --- Configuration du Rendu ---
 const canvas = document.getElementById("terrain");
 const gameWrapper = document.getElementById("game-wrapper");
 
-// Gestion de la densité de pixels (HiDPI / Retina)
+// Gestion de la densité de pixels pour un rendu net sur tous les écrans
 const dpr = window.devicePixelRatio || 1;
 canvas.width = CSS_SIZE * dpr;
 canvas.height = CSS_SIZE * dpr;
-canvas.style.width = CSS_SIZE + "px";
-canvas.style.height = CSS_SIZE + "px";
+canvas.style.width = `${CSS_SIZE}px`;
+canvas.style.height = `${CSS_SIZE}px`;
 
-// Initialisation du Moteur de Jeu
+// Initialisation du Moteur
 const engine = new GameEngine(canvas);
-
-// Mise à l'échelle du contexte de rendu
 engine.ctx.scale(dpr, dpr);
 
-// --- Contrôles Globaux Système ---
+// --- Gestion des Événements Globaux ---
 
-// Gestion du Plein Écran (F11)
+/**
+ * Raccourci clavier pour le mode plein écran (F11).
+ */
 window.addEventListener("keydown", (event) => {
   if (event.key === "F11") {
     event.preventDefault();
     if (!document.fullscreenElement) {
       gameWrapper.requestFullscreen().catch((err) => {
-        console.warn(`Erreur lors du passage en plein écran : ${err.message}`);
+        console.warn(`Plein écran refusé : ${err.message}`);
       });
     } else {
       document.exitFullscreen();
@@ -40,14 +40,17 @@ window.addEventListener("keydown", (event) => {
   }
 });
 
-// Lancement initial (affichage du menu)
-engine.ui.showMenu(
-  "Slither Arena",
-  "Prêt à jouer ?",
-  false,
-  0,
-  "Démarrer",
-  false,
-  true,
-);
+// --- Démarrage Initial ---
+
+// Affichage du menu d'accueil
+engine.ui.showMenu({
+  title: "Slither Arena",
+  subtitle: "Prêt à relever le défi ?",
+  showScore: false,
+  btnText: "Démarrer l'Aventure",
+  showInput: false,
+  isGameOver: false,
+});
+
+// Synchronisation visuelle du bouton Debug
 engine.ui.updateDebugButton(GAME_CONFIG.DEBUG_MODE);

@@ -1,9 +1,10 @@
 import SerpentAI from "../serpent/Serpent_ai.js";
 import { getRandomInt } from "../../utils.js";
-import { nbCells, GAME_CONFIG } from "../../constants.js";
+import { NB_CELLS, GAME_CONFIG } from "../../constants.js";
 
 /**
- * Gère l'apparition programmée des objets et des adversaires.
+ * Système de gestion de l'apparition des objets et des adversaires.
+ * Coordonne le spawn des PowerUps et des serpents IA selon l'état du jeu.
  */
 export default class SpawnSystem {
   /**
@@ -11,6 +12,7 @@ export default class SpawnSystem {
    * @param {ItemManager} itemManager - Gestionnaire pour le placement physique des items.
    */
   constructor(itemManager) {
+    /** @type {ItemManager} */
     this.itemManager = itemManager;
   }
 
@@ -26,11 +28,12 @@ export default class SpawnSystem {
 
     // Apparition aléatoire et rare du PowerUp d'invincibilité si une menace (IA) existe.
     if (hasAI && !hasPU && Math.random() < GAME_CONFIG.POWERUP_SPAWN_CHANCE) {
-      if (GAME_CONFIG.DEBUG_MODE)
+      if (GAME_CONFIG.DEBUG_MODE) {
         console.info(
           "%c[SPAWN] Un PowerUp est apparu sur la grille !",
           "color: #fbbf24;",
         );
+      }
       this.itemManager.spawnItem("powerup", serpents);
     }
   }
@@ -43,8 +46,8 @@ export default class SpawnSystem {
     serpents.push(
       new SerpentAI(
         3,
-        getRandomInt(nbCells),
-        getRandomInt(nbCells),
+        getRandomInt(NB_CELLS),
+        getRandomInt(NB_CELLS),
         getRandomInt(4),
       ),
     );

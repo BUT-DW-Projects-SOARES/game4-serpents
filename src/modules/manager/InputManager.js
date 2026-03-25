@@ -1,15 +1,23 @@
 /**
- * Gère les flux d'entrées clavier du joueur.
+ * Système de gestion des entrées utilisateur.
+ * Capture les commandes clavier et les stocke dans une file d'attente pour le moteur de jeu.
  */
 export default class InputManager {
+  /**
+   * Initialise le gestionnaire d'entrées et les écouteurs d'événements.
+   */
   constructor() {
-    /** @type {number[]} File d'attente des directions demandées par l'utilisateur (0:Haut, 1:Droite, 2:Bas, 3:Gauche) */
+    /**
+     * File d'attente des directions demandées par l'utilisateur.
+     * @type {number[]}
+     */
     this.directionQueue = [];
+
     this._setupListeners();
   }
 
   /**
-   * Ajoute une direction à la file d'attente.
+   * Ajoute une direction à la file d'attente si elle est valide.
    * @param {number} dir - Direction (0:Haut, 1:Droite, 2:Bas, 3:Gauche).
    */
   addDirection(dir) {
@@ -19,15 +27,17 @@ export default class InputManager {
   }
 
   /**
-   * Initialise les écouteurs d'événements clavier.
+   * Initialise les écouteurs d'événements clavier globaux.
+   * Supporte les flèches directionnelles et les touches ZQSD / WASD.
    * @private
    */
   _setupListeners() {
     window.addEventListener("keydown", (event) => {
       let nouvelleDirection = -1;
+
       switch (event.key.toLowerCase()) {
         case "z":
-        case "w": // Ajout support WASD complet
+        case "w": // Support WASD/ZQSD
         case "arrowup":
           nouvelleDirection = 0; // Haut
           break;
@@ -40,7 +50,7 @@ export default class InputManager {
           nouvelleDirection = 2; // Bas
           break;
         case "q":
-        case "a": // Ajout support WASD complet
+        case "a": // Support WASD/ZQSD
         case "arrowleft":
           nouvelleDirection = 3; // Gauche
           break;
@@ -54,14 +64,15 @@ export default class InputManager {
 
   /**
    * Récupère la prochaine direction valide de la file d'attente.
-   * Empêche les demi-tours directs à 180 degrés.
+   * Applique un filtrage pour empêcher les demi-tours immédiats à 180 degrés.
    * @param {number} currentDirection - La direction actuelle du serpent joueur.
-   * @returns {number|null} La nouvelle direction ou null si aucune direction valide n'est en attente.
+   * @returns {number|null} La nouvelle direction ou null si aucune commande valide n'est en attente.
    */
   getNextDirection(currentDirection) {
     while (this.directionQueue.length > 0) {
       const d = this.directionQueue.shift();
-      // Interdiction du demi-tour (0/2 ou 1/3)
+
+      // Validation : Empêcher le demi-tour direct (ex: Haut vers Bas)
       if (Math.abs(currentDirection - d) !== 2) {
         return d;
       }
@@ -70,7 +81,7 @@ export default class InputManager {
   }
 
   /**
-   * Purge la file d'attente des commandes.
+   * Vide la file d'attente des commandes.
    */
   reset() {
     this.directionQueue = [];

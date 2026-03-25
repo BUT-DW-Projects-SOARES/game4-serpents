@@ -22,19 +22,20 @@ export const COLORS = {
 
 /**
  * Configuration globale du gameplay pour un équilibrage facile.
+ * @type {Object}
  */
 export const GAME_CONFIG = {
-  DEBUG_MODE: true, // Active les logs de présentation dans la console
+  DEBUG_MODE: true,
   FPS_INITIAL: 10,
   FPS_MAX: 20,
-  SCORE_FOR_SPEED_INCREASE: 12, // Progression plus lente (était 5)
+  SCORE_FOR_SPEED_INCREASE: 12,
 
-  AI_SPAWN_SCORE_INTERVAL: 10, // Rétabli à 10 selon souhait utilisateur
-  AI_MOVE_CHANCE: 0.9, // Plus rapide (90% du temps, était 75%)
-  AI_RANDOM_MOVE_CHANCE: 0.35, // Plus imprévisible (était 25%)
+  AI_SPAWN_SCORE_INTERVAL: 10,
+  AI_MOVE_CHANCE: 0.9,
+  AI_RANDOM_MOVE_CHANCE: 0.35,
 
-  POWERUP_SPAWN_CHANCE: 0.05, // 5% par check si IA présente (environ 1 chance sur 2 par sec)
-  POWERUP_DURATION: 8000, // 8s d'invincibilité
+  POWERUP_SPAWN_CHANCE: 0.05,
+  POWERUP_DURATION: 8000,
 
   SCORE_POWERUP: 5,
   SCORE_APPLE: 1,
@@ -46,7 +47,7 @@ export const GAME_CONFIG = {
 export const TAILLE_CELLULE = 20;
 
 /** @type {number} Nombre de cellules par côté de la grille */
-export const nbCells = 30;
+export const NB_CELLS = 30;
 
 /** @type {number} Taille totale du canvas en pixels CSS */
 export const CSS_SIZE = 600;

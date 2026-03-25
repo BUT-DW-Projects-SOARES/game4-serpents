@@ -1,60 +1,76 @@
 /**
- * Centralise les interactions avec le DOM et la mise à jour de l'interface utilisateur.
+ * Service de gestion de l'interface utilisateur (HUD, Menus, Modaux).
+ * Centralise toutes les manipulations directes du DOM et les mises à jour d'affichage.
  */
 export default class UIManager {
+  /**
+   * Initialise le gestionnaire d'interface et récupère les références du DOM.
+   */
   constructor() {
-    /** @type {HTMLElement} Élément d'affichage du score */
+    // HUD Elements
+    /** @type {HTMLElement|null} */
     this.scoreValElem = document.getElementById("score-val");
-    /** @type {HTMLElement} Élément d'affichage de la vitesse */
+    /** @type {HTMLElement|null} */
     this.speedValElem = document.getElementById("speed-val");
-    /** @type {HTMLElement} Overlay du menu principal */
+
+    // Menu Elements
+    /** @type {HTMLElement|null} */
     this.menuOverlay = document.getElementById("game-menu-overlay");
-    /** @type {HTMLElement} Titre du menu */
+    /** @type {HTMLElement|null} */
     this.menuTitle = document.getElementById("menu-title");
-    /** @type {HTMLElement} Sous-titre du menu */
+    /** @type {HTMLElement|null} */
     this.menuSubtitle = document.getElementById("menu-subtitle");
-    /** @type {HTMLElement} Section d'affichage du score final */
+    /** @type {HTMLElement|null} */
     this.menuScoreDisplay = document.getElementById("menu-score-display");
-    /** @type {HTMLElement} Valeur du score final */
+    /** @type {HTMLElement|null} */
     this.menuScoreVal = document.getElementById("menu-score-val");
-    /** @type {HTMLElement} Bouton d'action principal (Démarrer/Continuer) */
+    /** @type {HTMLElement|null} */
     this.menuActionBtn = document.getElementById("menu-action-btn");
-    /** @type {HTMLElement} Bouton de redémarrage (quand pause) */
+    /** @type {HTMLElement|null} */
     this.menuRestartBtn = document.getElementById("menu-restart-btn");
-    /** @type {HTMLElement} Bouton de debug (quand pause) */
+    /** @type {HTMLElement|null} */
     this.menuDebugBtn = document.getElementById("menu-debug-btn");
 
-    // Modaux additionnels
+    // Modal Elements
+    /** @type {HTMLElement|null} */
     this.confirmOverlay = document.getElementById("confirm-modal");
+    /** @type {HTMLElement|null} */
     this.confirmYesBtn = document.getElementById("confirm-yes-btn");
+    /** @type {HTMLElement|null} */
     this.confirmNoBtn = document.getElementById("confirm-no-btn");
 
+    /** @type {HTMLElement|null} */
     this.infoOverlay = document.getElementById("info-modal");
+    /** @type {HTMLElement|null} */
     this.infoCloseBtn = document.getElementById("info-close");
   }
 
   /**
-   * Met à jour le HUD (Score et Vitesse).
-   * @param {number} score
-   * @param {number} fps
+   * Met à jour l'affichage des informations en temps réel (HUD).
+   * @param {number} score - Score actuel à afficher.
+   * @param {number} fps - Multiplicateur de vitesse/difficulté calculé.
    */
   updateHUD(score, fps) {
-    if (this.scoreValElem) this.scoreValElem.textContent = score;
+    if (this.scoreValElem) {
+      this.scoreValElem.textContent = score;
+    }
     if (this.speedValElem) {
       this.speedValElem.textContent = (fps / 10).toFixed(1) + "x";
     }
   }
 
   /**
-   * Affiche le menu ou l'écran de pause.
-   * @param {string} title
-   * @param {string} subtitle
-   * @param {boolean} showScore
-   * @param {number} score
-   * @param {string} btnText
-   * @param {boolean} showRestart
+   * Configure et affiche l'overlay du menu (Lancement, Pause, Game Over).
+   * @param {Object} options - Options de configuration du menu.
+   * @param {string} options.title - Titre principal à afficher.
+   * @param {string} options.subtitle - Sous-titre ou message descriptif.
+   * @param {boolean} [options.showScore=false] - Affiche ou non le bloc de score.
+   * @param {number} [options.score=0] - Valeur du score final à afficher.
+   * @param {string} [options.btnText="Rejouer"] - Libellé du bouton principal.
+   * @param {boolean} [options.showRestart=false] - Affiche le bouton de redémarrage.
+   * @param {boolean} [options.showDebug=false] - Affiche le bouton de debug.
    */
-  showMenu(
+  showMenu({
     title,
     subtitle,
     showScore = false,
@@ -62,89 +78,97 @@ export default class UIManager {
     btnText = "Rejouer",
     showRestart = false,
     showDebug = false,
-  ) {
-    this.menuTitle.textContent = title;
-    this.menuSubtitle.textContent = subtitle;
-    this.menuActionBtn.textContent = btnText;
+  }) {
+    if (this.menuTitle) this.menuTitle.textContent = title;
+    if (this.menuSubtitle) this.menuSubtitle.textContent = subtitle;
+    if (this.menuActionBtn) this.menuActionBtn.textContent = btnText;
 
-    if (showScore) {
-      this.menuScoreDisplay.classList.remove("hidden");
-      this.menuScoreVal.textContent = score;
-    } else {
-      this.menuScoreDisplay.classList.add("hidden");
-    }
+    // Gestion du score final
+    this._toggleElement(this.menuScoreDisplay, showScore);
+    if (this.menuScoreVal) this.menuScoreVal.textContent = score;
 
-    if (showDebug) {
-      this.menuDebugBtn.classList.remove("hidden");
-    } else {
-      this.menuDebugBtn.classList.add("hidden");
-    }
+    // Gestion des boutons optionnels
+    this._toggleElement(this.menuDebugBtn, showDebug);
+    this._toggleElement(this.menuRestartBtn, showRestart);
 
-    if (showRestart) {
-      this.menuRestartBtn.classList.remove("hidden");
-    } else {
-      this.menuRestartBtn.classList.add("hidden");
-    }
-
-    this.menuOverlay.classList.remove("hidden");
+    this.menuOverlay?.classList.remove("hidden");
   }
 
   /**
-   * Cache le menu principal.
+   * Masque l'overlay du menu.
    */
   hideMenu() {
-    this.menuOverlay.classList.add("hidden");
+    this.menuOverlay?.classList.add("hidden");
   }
 
   /**
-   * Vérifie si le menu est actuellement visible.
+   * Détermine si le menu est actuellement à l'écran.
    * @returns {boolean}
    */
   isMenuVisible() {
-    return !this.menuOverlay.classList.contains("hidden");
+    return this.menuOverlay
+      ? !this.menuOverlay.classList.contains("hidden")
+      : false;
   }
 
   /**
-   * Affiche le modal de confirmation personnalisé.
+   * Affiche le popup de confirmation (Quitter le jeu).
    */
   showConfirm() {
-    this.confirmOverlay.classList.remove("hidden");
+    this.confirmOverlay?.classList.remove("hidden");
   }
 
   /**
-   * Cache le modal de confirmation.
+   * Masque le popup de confirmation.
    */
   hideConfirm() {
-    this.confirmOverlay.classList.add("hidden");
+    this.confirmOverlay?.classList.add("hidden");
   }
 
   /**
-   * Affiche le modal d'information / aide.
+   * Affiche l'écran d'information (Commandes & Aide).
    */
   showInfo() {
-    this.infoOverlay.classList.remove("hidden");
+    this.infoOverlay?.classList.remove("hidden");
   }
 
   /**
-   * Cache le modal d'information.
+   * Masque l'écran d'information.
    */
   hideInfo() {
-    this.infoOverlay.classList.add("hidden");
+    this.infoOverlay?.classList.add("hidden");
   }
 
   /**
-   * Met à jour l'apparence du bouton de debug pour refléter l'état actuel.
-   * @param {boolean} active - Si le mode debug est activé.
+   * Met à jour visuellement le bouton de debug dans le menu Pause.
+   * @param {boolean} active - État du mode debug.
    */
   updateDebugButton(active) {
+    if (!this.menuDebugBtn) return;
+
     if (active) {
       this.menuDebugBtn.classList.add("active");
       this.menuDebugBtn.textContent = "Debug: ON";
-      this.menuDebugBtn.style.backgroundColor = "#10b981"; // Vert
+      this.menuDebugBtn.style.backgroundColor = "#10b981"; // Émeraude
     } else {
       this.menuDebugBtn.classList.remove("active");
       this.menuDebugBtn.textContent = "Debug: OFF";
-      this.menuDebugBtn.style.backgroundColor = "#ef4444"; // Rouge
+      this.menuDebugBtn.style.backgroundColor = "#ef4444"; // Rose/Rouge
+    }
+  }
+
+  /**
+   * Utilitaire pour afficher/masquer un élément DOM via la classe 'hidden'.
+   * @param {HTMLElement|null} element - L'élément cible.
+   * @param {boolean} visible - L'état souhaité.
+   * @private
+   */
+  _toggleElement(element, visible) {
+    if (!element) return;
+    if (visible) {
+      element.classList.remove("hidden");
+    } else {
+      element.classList.add("hidden");
     }
   }
 }

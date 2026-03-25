@@ -1,60 +1,66 @@
 import Serpent from "./Serpent.js";
 import {
-  nbCells,
+  NB_CELLS,
   COLORS as GAME_COLORS,
   GAME_CONFIG,
 } from "../../constants.js";
 
 /**
- * Sous-classe intelligente paramétrant un serpent piloté par algorithme (IA).
- * Permet l'apparition d'adversaires se dirigeant de façon automne sur la grille.
- * Hérite entièrement du rendu visuel et de la motorisation de la classe parente Serpent.
+ * Sous-classe représentant un serpent piloté par ordinateur (IA).
+ * Gère une prise de décision autonome (Wander, Rush, Hunt) et l'esquive d'obstacles.
  */
 export default class SerpentAI extends Serpent {
+  /**
+   * Initialise un serpent IA.
+   * @param {number} longueur - Longueur initiale.
+   * @param {number} i - Position X.
+   * @param {number} j - Position Y.
+   * @param {number} direction - Direction initiale.
+   */
   constructor(longueur, i, j, direction) {
     super(longueur, i, j, direction);
-    /** @type {number} Direction actuelle du mouvement */
-    this.direction = direction;
-    // Les IA sont rouges par convention visuelle
+
+    // Les IA sont visuellement distinctes (Rouge)
     this.anneaux.forEach((a, idx) => {
-      if (idx === 0) a.couleur = GAME_COLORS.redIA;
-      else a.couleur = GAME_COLORS.redIABody;
+      a.couleur = idx === 0 ? GAME_COLORS.redIA : GAME_COLORS.redIABody;
     });
 
-    /** @type {number} Horodatage de création (utilisé comme identifiant unique dans les logs) */
+    /** @type {number} ID unique basé sur le temps de spawn */
     this.spawnTime = performance.now();
-
-    /** @type {boolean} Si l'IA est en mode 'rush' pour une pomme */
+    /** @type {boolean} État de collecte active */
     this.isRushing = false;
-    /** @type {boolean} Si l'IA traque le joueur */
+    /** @type {boolean} État de traque du joueur */
     this.isHunting = false;
-    /** @type {number} Compteur de pas de chasse pour s'arrêter */
+    /** @type {number} Durée restante de traque */
     this.huntCounter = 0;
   }
 
   /**
-   * Orchestre la prise de décision de l'IA.
-   * Analyse l'environnement pour choisir entre le vagabondage (Wander), la récolte (Rush) ou la chasse (Hunt).
-   * @param {Item[]} items - Liste des objets présents sur le terrain (Pommes, PowerUps).
-   * @param {Serpent[]} allSerpents - Liste des serpents actifs (Joueur + autres IA).
+   * Orchestre la prise de décision de l'IA à chaque cycle.
+   * @param {Item[]} items - Liste des objets sur la grille.
+   * @param {Serpent[]} allSerpents - Liste de tous les serpents actifs.
    */
   planNextMove(items = [], allSerpents = []) {
     const tete = this.anneaux[0];
-    const joueur = allSerpents[0]; // Par convention, le premier serpent est le joueur humain.
+    const joueur = allSerpents[0];
 
-    if (GAME_CONFIG.DEBUG_MODE) {
-      console.groupCollapsed(
-        `%c[IA DECISION] Serpent #${this.spawnTime.toString().slice(-4)}`,
-        "color: #ef4444; font-weight: bold;",
-      );
-    }
+    // 1. Mises à jour des états internes
+    this._updateStates(joueur);
 
-    // 1. GESTION DE L'ÉTAT (Rush vs Wander vs Hunt)
-    // L'IA peut changer d'état aléatoirement ou selon la proximité de cibles.
+    // 2. Détermination de la direction idéale
+    let idealDir = this._calculateIdealDirection(tete, items, joueur);
+
+    // 3. Application de la direction après audit de sécurité
+    this.direction = this._auditDirection(idealDir, tete, allSerpents, items);
+  }
+
+  /**
+   * Met à jour les états Rushing/Hunting selon les probabilités.
+   * @private
+   */
+  _updateStates(joueur) {
     if (this.isRushing || this.isHunting) {
       if (Math.random() < 0.05) {
-        if (GAME_CONFIG.DEBUG_MODE)
-          console.log("IA: Fin de l'état spécial (Reset to Wander)");
         this.isRushing = false;
         this.isHunting = false;
         this.huntCounter = 0;
@@ -62,98 +68,84 @@ export default class SerpentAI extends Serpent {
     } else {
       const chance = Math.random();
       if (chance < 0.1) {
-        if (GAME_CONFIG.DEBUG_MODE)
-          console.log("IA: Passage en mode RUSH (Ciblage Item)");
         this.isRushing = true;
       } else if (joueur && !joueur.dead && chance < 0.25) {
-        if (GAME_CONFIG.DEBUG_MODE)
-          console.log("IA: Passage en mode HUNT (Ciblage Joueur)");
         this.isHunting = true;
-        this.huntCounter = 40; // Traque plus longue (était 20)
+        this.huntCounter = 40;
       }
     }
+  }
 
+  /**
+   * Calcule la direction vers l'objectif actuel.
+   * @private
+   */
+  _calculateIdealDirection(tete, items, joueur) {
     let idealDir = this.direction;
 
-    // 2. CALCUL DE LA DIRECTION IDÉALE SELON L'ÉTAT
     if (this.isHunting && joueur) {
-      // MODE CHASSE : Vise directement la tête du joueur.
       this.huntCounter--;
       if (this.huntCounter <= 0) this.isHunting = false;
-
-      const targetI = joueur.anneaux[0].i;
-      const targetJ = joueur.anneaux[0].j;
-      const di = targetI - tete.i;
-      const dj = targetJ - tete.j;
-
-      if (Math.abs(di) > Math.abs(dj)) idealDir = di > 0 ? 1 : 3;
-      else if (dj !== 0) idealDir = dj > 0 ? 2 : 0;
-
-      if (GAME_CONFIG.DEBUG_MODE)
-        console.log(`IA Chasseur: Vise Joueur à [${targetI}, ${targetJ}]`);
+      idealDir = this._getDirectionTo(tete, joueur.anneaux[0]);
     } else if (this.isRushing) {
-      // MODE RUSH : Cherche l'objet le plus proche (Priorité aux PowerUps).
-      const powerUps = items.filter((it) => it.type === "powerup");
-      const apples = items.filter((it) => it.type === "apple");
-      const targets = powerUps.length > 0 ? powerUps : apples;
-      let target = null;
-      let minDist = Infinity;
-
-      targets.forEach((item) => {
-        const dist = Math.abs(item.i - tete.i) + Math.abs(item.j - tete.j);
-        if (dist < minDist) {
-          minDist = dist;
-          target = item;
-        }
-      });
-
-      if (target) {
-        const di = target.i - tete.i;
-        const dj = target.j - tete.j;
-        if (Math.abs(di) > Math.abs(dj)) idealDir = di > 0 ? 1 : 3;
-        else if (dj !== 0) idealDir = dj > 0 ? 2 : 0;
-        if (GAME_CONFIG.DEBUG_MODE)
-          console.log(
-            `IA Harvest: Cible ${target.type} à [${target.i}, ${target.j}]`,
-          );
-      }
-    } else {
-      // MODE WANDER : Flânage aléatoire avec changement de direction ponctuel.
-      if (Math.random() < 0.1) {
-        idealDir = Math.floor(Math.random() * 4);
-      }
+      const target = this._findNearestItem(tete, items);
+      if (target) idealDir = this._getDirectionTo(tete, target);
+    } else if (Math.random() < 0.1) {
+      idealDir = Math.floor(Math.random() * 4);
     }
 
-    // Sécurité: Empêcher le demi-tour immédiat (fatal pour le serpent).
+    // Empêcher le demi-tour direct (fatal)
     if (Math.abs(idealDir - this.direction) === 2) {
       idealDir = this.direction;
     }
 
-    // 3. ANALYSE DES DANGERS ET ESQUIVE (Audit de sécurité)
-    // Si la direction idéale est dangereuse, on cherche un chemin de repli.
-    if (this._isDirectionDangerous(idealDir, tete, allSerpents, items)) {
-      if (GAME_CONFIG.DEBUG_MODE)
-        console.warn(
-          "IA: Danger détecté sur la trajectoire idéale ! Recherche d'esquive...",
-        );
-      this.direction = this._getSafeDirection(tete, allSerpents, items);
-      if (GAME_CONFIG.DEBUG_MODE)
-        console.log(`IA: Direction de repli choisie: ${this.direction}`);
-    } else {
-      this.direction = idealDir;
-    }
-
-    if (GAME_CONFIG.DEBUG_MODE) console.groupEnd();
+    return idealDir;
   }
 
   /**
-   * Analyse la dangerosité d'une direction donnée.
-   * Un danger est défini par : un mur, un segment de serpent adverse, ou un item (si l'IA n'est pas en mode Rush).
-   * @param {number} dir - Direction à tester (0-3).
-   * @param {Anneau} tete - Position actuelle de la tête.
-   * @param {Serpent[]} allSerpents - Liste des serpents pour la détection de collision.
-   * @param {Item[]} items - Liste des items sur la grille.
-   * @returns {boolean} True si la direction est fatale ou déconseillée.
+   * Vérifie et corrige la direction si elle mène à une mort certaine.
+   * @private
+   */
+  _auditDirection(idealDir, tete, allSerpents, items) {
+    if (this._isDirectionDangerous(idealDir, tete, allSerpents, items)) {
+      return this._getSafeDirection(tete, allSerpents, items);
+    }
+    return idealDir;
+  }
+
+  /**
+   * Calcule la direction relative entre deux points.
+   * @private
+   */
+  _getDirectionTo(from, to) {
+    const di = to.i - from.i;
+    const dj = to.j - from.j;
+    if (Math.abs(di) > Math.abs(dj)) return di > 0 ? 1 : 3;
+    return dj > 0 ? 2 : 0;
+  }
+
+  /**
+   * Trouve l'item le plus proche.
+   * @private
+   */
+  _findNearestItem(tete, items) {
+    const powerUps = items.filter((it) => it.type === "powerup");
+    const targets = powerUps.length > 0 ? powerUps : items;
+    let nearest = null;
+    let minDist = Infinity;
+
+    targets.forEach((item) => {
+      const dist = Math.abs(item.i - tete.i) + Math.abs(item.j - tete.j);
+      if (dist < minDist) {
+        minDist = dist;
+        nearest = item;
+      }
+    });
+    return nearest;
+  }
+
+  /**
+   * Évalue si foncer dans une direction entraînera une collision.
    * @private
    */
   _isDirectionDangerous(dir, tete, allSerpents, items) {
@@ -174,65 +166,51 @@ export default class SerpentAI extends Serpent {
         break;
     }
 
-    // Sortie de grille (Murs)
-    if (nextI < 0 || nextI >= nbCells || nextJ < 0 || nextJ >= nbCells)
+    // Collision avec les murs
+    if (nextI < 0 || nextI >= NB_CELLS || nextJ < 0 || nextJ >= NB_CELLS)
       return true;
 
-    // Collision avec un autre serpent
+    // Collision avec n'importe quel serpent
     for (const s of allSerpents) {
-      if (s === this) continue;
       if (s.anneaux.some((a) => a.i === nextI && a.j === nextJ)) return true;
     }
 
-    // Éviter les items pendant le vagabondage pour les "garder" pour plus tard
-    if (!this.isRushing) {
-      if (items.some((it) => it.i === nextI && it.j === nextJ)) return true;
-    }
+    // Éviter les items pendant le wander (optionnel)
+    if (!this.isRushing && items.some((it) => it.i === nextI && it.j === nextJ))
+      return true;
 
     return false;
   }
 
   /**
-   * Recherche récursive d'une direction sécurisée parmi les options disponibles.
-   * @param {Anneau} tete - Position de la tête.
-   * @param {Serpent[]} allSerpents - Contexte des serpents.
-   * @param {Item[]} items - Contexte des items.
-   * @returns {number} Une direction (0-3) jugée sûre, ou la direction actuelle par défaut.
+   * Cherche une alternative viable si le danger est présent.
    * @private
    */
   _getSafeDirection(tete, allSerpents, items) {
-    const validDirections = [];
+    const valid = [];
     for (let d = 0; d < 4; d++) {
-      if (Math.abs(this.direction - d) === 2) continue; // Interdiction du demi-tour
-      if (!this._isDirectionDangerous(d, tete, allSerpents, items)) {
-        validDirections.push(d);
-      }
+      if (Math.abs(this.direction - d) === 2) continue;
+      if (!this._isDirectionDangerous(d, tete, allSerpents, items))
+        valid.push(d);
     }
-
-    if (validDirections.length > 0) {
-      return validDirections[
-        Math.floor(Math.random() * validDirections.length)
-      ];
-    }
-    return this.direction;
+    return valid.length > 0
+      ? valid[Math.floor(Math.random() * valid.length)]
+      : this.direction;
   }
 
   /**
-   * Cycle de mouvement de l'IA.
-   * Intègre un facteur de chance pour ralentir l'IA par rapport au joueur.
+   * Cycle de mise à jour de l'IA.
    * @param {Item[]} items - Context items.
    * @param {Serpent[]} allSerpents - Context serpents.
    */
   move(items, allSerpents) {
     if (Math.random() > GAME_CONFIG.AI_MOVE_CHANCE) return;
-
     this.planNextMove(items, allSerpents);
     super.move();
   }
 
   /**
-   * Augmente la taille de l'IA.
-   * Surchargé pour appliquer une couleur rouge uniforme sur tout le corps lors de la croissance.
+   * Applique le style IA lors d'une extension.
    */
   extend() {
     super.extend();

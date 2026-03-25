@@ -1,7 +1,8 @@
-import { nbCells, COLORS, GAME_CONFIG } from "../../constants.js";
+import { NB_CELLS, COLORS, GAME_CONFIG } from "../../constants.js";
 
 /**
- * Gère les calculs de collision entre serpents, murs et objets.
+ * Système de gestion des collisions.
+ * Gère les calculs de collision entre serpents (joueur/IA), murs et objets de jeu.
  */
 export default class CollisionSystem {
   /**
@@ -10,12 +11,14 @@ export default class CollisionSystem {
    * @param {UIManager} uiManager - Gestionnaire d'interface pour les alertes.
    */
   constructor(itemManager, uiManager) {
+    /** @type {ItemManager} */
     this.itemManager = itemManager;
+    /** @type {UIManager} */
     this.uiManager = uiManager;
   }
 
   /**
-   * Vérifie les collisions fatales pour un serpent (murs, soi-même, adversaires).
+   * Vérifie les collisions fatales pour un serpent donné.
    * @param {Serpent} s - Le serpent à tester.
    * @param {Serpent[]} serpents - Liste de tous les serpents actifs.
    * @param {Function} onGameOver - Callback appelé en cas de défaite du joueur.
@@ -23,7 +26,7 @@ export default class CollisionSystem {
    */
   checkFatalCollisions(s, serpents, onGameOver) {
     // 1. Collision avec les limites de la grille (Murs)
-    if (s.checkWallCollision(nbCells)) {
+    if (s.checkWallCollision(NB_CELLS)) {
       if (s === serpents[0]) onGameOver("Vous avez percuté un mur !");
       else s.dead = true;
       return true;
@@ -36,7 +39,7 @@ export default class CollisionSystem {
       return true;
     }
 
-    // 3. Collision avec un autre serpent (Adversaire ou IA)
+    // 3. Collision avec un autre serpent
     for (const autre of serpents) {
       if (s !== autre && s.checkCollisionWith(autre)) {
         return this._handleSerpentCollision(s, autre, serpents, onGameOver);
@@ -47,8 +50,14 @@ export default class CollisionSystem {
   }
 
   /**
-   * Gère la résolution complexe d'une collision entre deux serpents.
-   * Prend en compte l'invincibilité (PowerUp).
+   * Résout une collision détectée entre deux serpents.
+   * Gère les mécaniques d'invincibilité (PowerUp).
+   * @param {Serpent} s - Le serpent qui initie la collision (sa tête tape).
+   * @param {Serpent} autre - Le serpent percuté.
+   * @param {Serpent[]} serpents - Liste globale des serpents.
+   * @param {Function} onGameOver - Callback de fin de partie.
+   * @param {number} timestamp - Temps actuel (optionnel).
+   * @returns {boolean} True si la collision entraîne la mort d'un des serpents.
    * @private
    */
   _handleSerpentCollision(
@@ -60,58 +69,53 @@ export default class CollisionSystem {
   ) {
     const joueur = serpents[0];
 
+    // Cas où le joueur est impliqué
     if (s === joueur) {
-      // Le joueur fonce dans quelqu'un
-      if (joueur.invincibleUntil && timestamp < joueur.invincibleUntil) {
-        if (GAME_CONFIG.DEBUG_MODE)
-          console.info(
-            "%c[COLLISION] Joueur (Invincible) a écrasé une IA !",
-            "color: #fbbf24;",
-          );
-        autre.dead = true;
-        this.itemManager.spawnParticles(
-          autre.anneaux[0].i,
-          autre.anneaux[0].j,
-          COLORS.snakeBody,
-        );
-        return false; // Le joueur survit grâce au PowerUp
+      if (joueur.isInvincible(timestamp)) {
+        this._destroyIA(autre);
+        return false;
       } else {
         onGameOver("Vous avez percuté un autre serpent !");
         return true;
       }
     } else if (autre === joueur) {
-      // Une IA fonce dans le joueur
-      if (joueur.invincibleUntil && timestamp < joueur.invincibleUntil) {
-        if (GAME_CONFIG.DEBUG_MODE)
-          console.info(
-            "%c[COLLISION] Une IA s'est brisée contre le bouclier du joueur !",
-            "color: #fbbf24;",
-          );
-        s.dead = true;
-        this.itemManager.spawnParticles(
-          s.anneaux[0].i,
-          s.anneaux[0].j,
-          COLORS.snakeBody,
-        );
+      if (joueur.isInvincible(timestamp)) {
+        this._destroyIA(s);
         return true;
       } else {
         onGameOver("Un serpent vous a percuté !");
         return true;
       }
     } else {
-      // IA vs IA : Les deux sont éliminées pour simplifier
+      // IA vs IA
       s.dead = true;
       return true;
     }
   }
 
   /**
-   * Gère la collecte d'items par un serpent.
-   * Détecte si la tête du serpent chevauche un objet.
+   * Détruit un serpent IA avec un effet de particules.
+   * @param {Serpent} ia - Le serpent IA à détruire.
+   * @private
+   */
+  _destroyIA(ia) {
+    if (GAME_CONFIG.DEBUG_MODE) {
+      console.info("%c[COLLISION] IA détruite !", "color: #fbbf24;");
+    }
+    ia.dead = true;
+    this.itemManager.spawnParticles(
+      ia.anneaux[0].i,
+      ia.anneaux[0].j,
+      COLORS.snakeBody,
+    );
+  }
+
+  /**
+   * Gère la collecte d'items (pommes, powerups) par les serpents.
    * @param {Serpent} s - Le serpent qui collecte.
-   * @param {Serpent} joueur - Le serpent du joueur (pour le score).
+   * @param {Serpent} joueur - Le joueur (pour le score).
    * @param {ItemManager} itemManager - Gestionnaire des items.
-   * @param {Object} scoreState - Objet de référence pour mettre à jour le score global.
+   * @param {Object} scoreState - État du score à mettre à jour.
    * @param {number} timestamp - Temps actuel.
    */
   handleItemCollection(s, joueur, itemManager, scoreState, timestamp) {
@@ -132,46 +136,67 @@ export default class CollisionSystem {
   }
 
   /**
-   * Traite l'effet spécifique d'un item collecté (Pomme vs PowerUp).
+   * Traite l'application de l'effet d'un item collecté.
    * @private
    */
   _processItem(s, joueur, item, itemManager, scoreState, index, timestamp) {
     if (item.type === "apple") {
-      if (s === joueur) {
-        scoreState.score += GAME_CONFIG.SCORE_APPLE;
-        if (GAME_CONFIG.DEBUG_MODE)
-          console.log("%c[ITEM] Pomme mangée (+1)", "color: #4ade80;");
-      } else {
-        // L'IA vole la pomme au joueur (Pénalité)
-        scoreState.score = Math.max(
-          0,
-          scoreState.score + GAME_CONFIG.SCORE_AI_PENALTY,
-        );
-        if (GAME_CONFIG.DEBUG_MODE)
-          console.warn(
-            "%c[ITEM] L'IA a volé une pomme (-1)",
-            "color: #ef4444;",
-          );
-      }
-
-      s.extend();
-      itemManager.spawnParticles(item.i, item.j, COLORS.apple);
-      itemManager.items.splice(index, 1);
-      itemManager.spawnItem("apple", [joueur]);
+      this._handleApple(s, joueur, item, itemManager, scoreState, index);
     } else if (item.type === "powerup") {
-      if (s === joueur) {
-        scoreState.score += GAME_CONFIG.SCORE_POWERUP;
-        joueur.invincibleUntil = timestamp + GAME_CONFIG.POWERUP_DURATION;
-        if (GAME_CONFIG.DEBUG_MODE)
-          console.info(
-            "%c[ITEM] POWERUP ACTIVÉ ! (Invincibilité 8s)",
-            "color: #fbbf24; font-weight: bold;",
-          );
-      }
-
-      s.extend();
-      itemManager.spawnParticles(item.i, item.j, COLORS.powerup);
-      itemManager.items.splice(index, 1);
+      this._handlePowerUp(
+        s,
+        joueur,
+        item,
+        itemManager,
+        scoreState,
+        index,
+        timestamp,
+      );
     }
+  }
+
+  /**
+   * Gère la collecte d'une pomme.
+   * @private
+   */
+  _handleApple(s, joueur, item, itemManager, scoreState, index) {
+    if (s === joueur) {
+      scoreState.score += GAME_CONFIG.SCORE_APPLE;
+      if (GAME_CONFIG.DEBUG_MODE)
+        console.log("%c[ITEM] Pomme mangée (+1)", "color: #4ade80;");
+    } else {
+      scoreState.score = Math.max(
+        0,
+        scoreState.score + GAME_CONFIG.SCORE_AI_PENALTY,
+      );
+      if (GAME_CONFIG.DEBUG_MODE)
+        console.warn("%c[ITEM] AI a volé une pomme (-1)", "color: #ef4444;");
+    }
+
+    s.extend();
+    itemManager.spawnParticles(item.i, item.j, COLORS.apple);
+    itemManager.items.splice(index, 1);
+    itemManager.spawnItem("apple", [joueur]);
+  }
+
+  /**
+   * Gère la collecte d'un PowerUp.
+   * @private
+   */
+  _handlePowerUp(s, joueur, item, itemManager, scoreState, index, timestamp) {
+    if (s === joueur) {
+      scoreState.score += GAME_CONFIG.SCORE_POWERUP;
+      joueur.invincibleUntil = timestamp + GAME_CONFIG.POWERUP_DURATION;
+      if (GAME_CONFIG.DEBUG_MODE) {
+        console.info(
+          "%c[ITEM] POWERUP ACTIVÉ ! (Invincibilité 8s)",
+          "color: #fbbf24; font-weight: bold;",
+        );
+      }
+    }
+
+    s.extend();
+    itemManager.spawnParticles(item.i, item.j, COLORS.powerup);
+    itemManager.items.splice(index, 1);
   }
 }

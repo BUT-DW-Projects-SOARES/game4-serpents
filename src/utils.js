@@ -1,27 +1,24 @@
 /**
- * Fonctions utiles
+ * Bibliothèque de fonctions utilitaires pour Slither Arena.
  * @module utils
  */
 
 /**
- * Fonction générant des nombres pseudo-aléatoires entiers
- * entre 0 et max (max non compris).
- * @param {number} max - Valeur max entière (non comprise).
- * @returns {number} Valeur aléatoire dans [0, max).
+ * Génère un nombre entier aléatoire dans l'intervalle [0, max[.
+ * @param {number} max - Limite supérieure (exclue).
+ * @returns {number} Un entier aléatoire.
  */
-function getRandomInt(max) {
+export function getRandomInt(max) {
   return Math.floor(Math.random() * max);
 }
 
 /**
- * Fonction générant une couleur aléatoire
- * @returns Couleur aléatoire sous forme de chaîne de caractère CSS
+ * Génère une couleur CSS aléatoire au format RGB.
+ * @returns {string} Une chaîne de type "rgb(r, g, b)".
  */
-function getRandomColor() {
-  const red = getRandomInt(256);
-  const blue = getRandomInt(256);
-  const green = getRandomInt(256);
-  return "rgb(" + red + "," + green + "," + blue + ")";
+export function getRandomColor() {
+  const r = getRandomInt(256);
+  const g = getRandomInt(256);
+  const b = getRandomInt(256);
+  return `rgb(${r}, ${g}, ${b})`;
 }
-
-export { getRandomInt, getRandomColor };

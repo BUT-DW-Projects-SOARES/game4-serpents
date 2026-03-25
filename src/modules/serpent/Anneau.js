@@ -1,51 +1,47 @@
-/** @module Anneau */
-
 /**
- * Représente un segment abstrait du jeu (anneau physique d'un serpent ou autre entité de la grille).
- * Utilisé principalement pour gérer les coordonnées spatiales et temporelles.
+ * Représente un segment individuel (anneau) d'un serpent sur la grille.
+ * Gère les coordonnées spatiales et temporelles du segment.
  */
 export default class Anneau {
   /**
-   * Initialise les propriétés de l'anneau.
-   * @param {number} i - L'indice de colonne sur la grille du jeu.
-   * @param {number} j - L'indice de ligne sur la grille du jeu.
-   * @param {string} couleur - Le code couleur CSS associé à cet anneau.
+   * Initialise un nouvel anneau.
+   * @param {number} i - Indice de colonne sur la grille (axe X).
+   * @param {number} j - Indice de ligne sur la grille (axe Y).
+   * @param {string} couleur - Code couleur CSS associé.
    */
   constructor(i, j, couleur) {
-    /** @type {number} Position horizontale sur la grille */
+    /** @type {number} Position horizontale (0 à NB_CELLS-1) */
     this.i = i;
-    /** @type {number} Position verticale sur la grille */
+    /** @type {number} Position verticale (0 à NB_CELLS-1) */
     this.j = j;
     /** @type {string} Couleur CSS du segment */
     this.couleur = couleur;
   }
 
   /**
-   * Applique un déplacement direct sur la grille dans la direction donnée.
-   * Ne vérifie pas les collisions (délégué à la classe Serpent/Main).
-   * @param {number} d - L'identifiant de la direction (0:Haut, 1:Droite, 2:Bas, 3:Gauche).
+   * Déplace l'anneau d'une unité dans une direction donnée.
+   * @param {number} d - Identifiant de direction (0:Haut, 1:Droite, 2:Bas, 3:Gauche).
    */
   move(d) {
     switch (d) {
       case 0:
-        this.j -= 1; // Haut
-        break;
+        this.j -= 1;
+        break; // Haut
       case 1:
-        this.i += 1; // Droite
-        break;
+        this.i += 1;
+        break; // Droite
       case 2:
-        this.j += 1; // Bas
-        break;
+        this.j += 1;
+        break; // Bas
       case 3:
-        this.i -= 1; // Gauche
-        break;
+        this.i -= 1;
+        break; // Gauche
     }
   }
 
   /**
-   * Hérite de l'emplacement spatial d'un autre anneau.
-   * Essentiel pour la cascade de mouvements du corps du serpent.
-   * @param {Anneau} a - L'anneau cible dont on copie la position (souvent l'anneau précédent).
+   * Copie les coordonnées d'un autre anneau.
+   * @param {Anneau} a - L'anneau source dont on copie la position.
    */
   copy(a) {
     this.i = a.i;
